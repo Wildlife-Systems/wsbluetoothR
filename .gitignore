@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+src/*.o
+src/*.so
+src/*.dll
+*.exe
+test_data.txt
+out.pdf
+*.png
+Rplot*.pdf
+derived_data/
+data/
+.Rbuildignore

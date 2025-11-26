@@ -1,0 +1,19 @@
+Package: wsbluetoothR
+Title: Process WildlifeSystems bluetooth data
+Version: 0.1.0
+Authors@R: 
+    person("Ed", "Baker", , "ed@ebaker.me.uk", role = c("aut", "cre"))
+Description: Process Bluetooth data from ws-bluetooth
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 4.0.0)
+Imports:
+    Rcpp
+LinkingTo: 
+    Rcpp
+Suggests:
+    testthat (>= 3.0.0)
+SystemRequirements: C++11
