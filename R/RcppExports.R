@@ -5,3 +5,11 @@ process_bluetooth_data <- function(input_file, progress_interval = 1000L, includ
     .Call(`_wsbluetoothR_process_bluetooth_data`, input_file, progress_interval, include_prefixes, exclude_prefixes)
 }
 
+get_unique_device_names <- function(input_file, progress_interval = 10000L) {
+    .Call(`_wsbluetoothR_get_unique_device_names`, input_file, progress_interval)
+}
+
+find_common_prefixes_cpp <- function(device_names, min_length = 3L, min_count = 2L, stop_char = "") {
+    .Call(`_wsbluetoothR_find_common_prefixes_cpp`, device_names, min_length, min_count, stop_char)
+}
+

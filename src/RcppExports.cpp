@@ -24,9 +24,37 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// get_unique_device_names
+CharacterVector get_unique_device_names(std::string input_file, int progress_interval);
+RcppExport SEXP _wsbluetoothR_get_unique_device_names(SEXP input_fileSEXP, SEXP progress_intervalSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type input_file(input_fileSEXP);
+    Rcpp::traits::input_parameter< int >::type progress_interval(progress_intervalSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_unique_device_names(input_file, progress_interval));
+    return rcpp_result_gen;
+END_RCPP
+}
+// find_common_prefixes_cpp
+DataFrame find_common_prefixes_cpp(CharacterVector device_names, int min_length, int min_count, std::string stop_char);
+RcppExport SEXP _wsbluetoothR_find_common_prefixes_cpp(SEXP device_namesSEXP, SEXP min_lengthSEXP, SEXP min_countSEXP, SEXP stop_charSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< CharacterVector >::type device_names(device_namesSEXP);
+    Rcpp::traits::input_parameter< int >::type min_length(min_lengthSEXP);
+    Rcpp::traits::input_parameter< int >::type min_count(min_countSEXP);
+    Rcpp::traits::input_parameter< std::string >::type stop_char(stop_charSEXP);
+    rcpp_result_gen = Rcpp::wrap(find_common_prefixes_cpp(device_names, min_length, min_count, stop_char));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_wsbluetoothR_process_bluetooth_data", (DL_FUNC) &_wsbluetoothR_process_bluetooth_data, 4},
+    {"_wsbluetoothR_get_unique_device_names", (DL_FUNC) &_wsbluetoothR_get_unique_device_names, 2},
+    {"_wsbluetoothR_find_common_prefixes_cpp", (DL_FUNC) &_wsbluetoothR_find_common_prefixes_cpp, 4},
     {NULL, NULL, 0}
 };
 

@@ -35,7 +35,7 @@
 #' data <- process_bluetooth("data/combined_sort.txt", 
 #'                          exclude_prefixes = c("Unknown"))
 #' }
-#'
+#' @importFrom Rcpp evalCpp
 #' @export
 process_bluetooth <- function(input_file = "data/combined_sort.txt", 
                               progress_interval = 1000,

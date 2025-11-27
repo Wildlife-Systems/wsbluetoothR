@@ -15,7 +15,7 @@ process_bluetooth(
 \item{input_file}{Character string. Path to input data file with format:
 device datetime address power name}
 
-\item{progress_interval}{Integer. Report progress every N lines (0 = no progress).
+\item{progress_interval}{Integer. Report progress every N lines (must be positive).
 Default is 1000.}
 
 \item{include_prefixes}{Character vector or NULL. If provided, only include records
@@ -52,5 +52,4 @@ data <- process_bluetooth("data/combined_sort.txt",
 data <- process_bluetooth("data/combined_sort.txt", 
                          exclude_prefixes = c("Unknown"))
 }
-
 }
