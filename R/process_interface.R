@@ -54,10 +54,15 @@ process_bluetooth <- function(input_file = "data/combined_sort.txt",
   
   # Call Rcpp function
   cat("Processing Bluetooth data with Rcpp...\n")
+  start_time <- Sys.time()
+  
   result <- process_bluetooth_data(input_file, 
                                   as.integer(progress_interval),
                                   include_prefixes,
                                   exclude_prefixes)
+  
+  end_time <- Sys.time()
+  processing_time <- as.numeric(difftime(end_time, start_time, units = "secs"))
   
   # Convert datetime strings to POSIXct
   result$datetime <- as.POSIXct(result$datetime, format = "%Y%m%d-%H%M%S", tz = "UTC")
@@ -65,7 +70,17 @@ process_bluetooth <- function(input_file = "data/combined_sort.txt",
   # Remove any rows with NA datetime
   result <- result[!is.na(result$datetime), ]
   
+  # Add file information and processing time to attributes
+  file_info <- file.info(input_file)
+  attr(result, "file_name") <- basename(input_file)
+  attr(result, "file_size") <- file_info$size
+  attr(result, "processing_time") <- processing_time
+  
   cat("Processing complete:", nrow(result), "unique device-datetime combinations\n")
+  cat("Processing time:", round(processing_time, 2), "seconds\n")
+  
+  # Set class for S3 methods
+  class(result) <- c("bluetooth_data", "data.frame")
   
   return(result)
 }

@@ -67,6 +67,7 @@ DataFrame process_bluetooth_data(std::string input_file,
   
   std::string line;
   int line_count = 0;
+  int lines_filtered = 0;
   
   // Process file line by line
   while (std::getline(file, line)) {
@@ -110,12 +111,15 @@ DataFrame process_bluetooth_data(std::string input_file,
         
         // Increment count
         count_by_device[key]++;
+      } else {
+        lines_filtered++;
       }
     }
   }
   
   file.close();
   Rcout << "Total lines processed: " << line_count << "\n";
+  Rcout << "Lines filtered out: " << lines_filtered << "\n";
   
   // Convert map to vectors for DataFrame
   int total_count = count_by_device.size();
@@ -165,12 +169,19 @@ DataFrame process_bluetooth_data(std::string input_file,
   }
   
   // Create and return DataFrame
-  return DataFrame::create(
+  DataFrame result = DataFrame::create(
     Named("device") = sorted_devices,
     Named("datetime") = sorted_datetimes,
     Named("count") = sorted_counts,
     _["stringsAsFactors"] = false
   );
+  
+  // Add metadata as attributes
+  result.attr("total_lines") = line_count;
+  result.attr("lines_filtered") = lines_filtered;
+  result.attr("unique_combinations") = sorted_devices.size();
+  
+  return result;
 }
 
 // [[Rcpp::export]]
