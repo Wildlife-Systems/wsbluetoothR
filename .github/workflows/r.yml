@@ -10,9 +10,14 @@ name: R
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
+# Running on every branch means a busy branch can stack up runs; keep only
+# the newest for a given ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
