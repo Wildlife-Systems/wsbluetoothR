@@ -23,7 +23,10 @@ inline bool wsbt_parse_digits(const char* s, int n, int& out) {
 // Parse datetime string in format YYYYMMDD-HHMMSS to time_t. Returns -1 for
 // anything that is not a well-formed, in-range datetime.
 inline std::time_t wsbt_parse_datetime(std::string_view datetime_str) {
-    if (datetime_str.length() < 15) {
+    // Exactly 15: the field is fixed-width YYYYMMDD-HHMMSS. Accepting anything
+    // longer would silently drop a trailing suffix and turn malformed input into
+    // a plausible-looking detection.
+    if (datetime_str.length() != 15) {
         return -1;
     }
 
