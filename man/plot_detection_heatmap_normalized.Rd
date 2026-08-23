@@ -4,12 +4,15 @@
 \alias{plot_detection_heatmap_normalized}
 \title{Plot Normalized Detection Heatmap}
 \usage{
-plot_detection_heatmap_normalized(data, time_unit = "month")
+plot_detection_heatmap_normalized(data, time_unit = "month", log = FALSE)
 }
 \arguments{
 \item{data}{A bluetooth_data object or data.frame from \code{process_bluetooth()}.}
 
 \item{time_unit}{Character. Time aggregation: "hour", "day", "week", or "month". Default is "month".}
+
+\item{log}{Logical. If TRUE, log10-transform counts (log10(count + 1)) before normalizing each
+device to its maximum, so relative activity is compared on a log scale. Default is FALSE.}
 }
 \value{
 A base R heatmap showing normalized device x time detection patterns.
@@ -22,5 +25,6 @@ are normalized to that device's maximum, revealing relative activity patterns.
 \dontrun{
 data <- process_bluetooth("data/combined_sort.txt")
 plot_detection_heatmap_normalized(data, time_unit = "day")
+plot_detection_heatmap_normalized(data, time_unit = "hour", log = TRUE)
 }
 }

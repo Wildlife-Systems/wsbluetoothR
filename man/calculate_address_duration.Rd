@@ -7,12 +7,13 @@
 calculate_address_duration(
   input_files,
   progress_interval = 10000L,
-  device_filter = characterVector(),
+  device_filter = NULL,
   min_date = "",
   max_date = "",
-  include_list = characterVector(),
-  exclude_list = characterVector(),
-  low_memory = FALSE
+  include_list = NULL,
+  exclude_list = NULL,
+  low_memory = FALSE,
+  exclude_addresses = NULL
 )
 }
 \arguments{
@@ -20,7 +21,19 @@ calculate_address_duration(
 
 \item{progress_interval}{Integer. How often to print progress (0 = no progress). Default is 10000.}
 
-\item{low_memory}{Logical. If TRUE, processes one device at a time to reduce memory usage. Default is FALSE.}
+\item{device_filter}{Character vector. Filter by specific device IDs. Empty = all devices.}
+
+\item{min_date}{String. Minimum date in YYYYMMDD format. Empty = no minimum.}
+
+\item{max_date}{String. Maximum date in YYYYMMDD format. Empty = no maximum.}
+
+\item{include_list}{Character vector. Only include records where name starts with these prefixes.}
+
+\item{exclude_list}{Character vector. Exclude records where name starts with these prefixes.}
+
+\item{low_memory}{Logical. If TRUE, processes devices in batches (default 4 per pass, set via the \code{WSBT_DEVICES_PER_PASS} environment variable) to reduce peak memory, reading the input once per batch. Default is FALSE.}
+
+\item{exclude_addresses}{Character vector. Exclude these addresses entirely (all packets). Empty = no filter.}
 }
 \value{
 A data.frame with columns:

@@ -1,0 +1,47 @@
+prefix,category,source,note
+lime-,bike,observed,Lime dockless share e-bike / e-scooter
+NIU_,bike,observed,NIU electric scooter
+Brompton,bike,observed,Brompton electric folding bike
+Interphone,bike,observed,Motorcycle/bike Bluetooth intercom
+ELEMNT,bike,observed,Wahoo ELEMNT cycle computer
+Wahoo,bike,known,Wahoo cycling head unit / trainer
+KICKR,bike,known,Wahoo KICKR indoor bike trainer
+Garmin Edge,bike,known,Garmin Edge cycle computer
+BYD,vehicle,observed,BYD electric vehicle
+70mai,vehicle,observed,70mai in-car dash cam
+Blackvue,vehicle,observed,BlackVue in-car dash cam (lower-case variant)
+BlackVue,vehicle,observed,BlackVue in-car dash cam (camel-case variant)
+DTCO,vehicle,observed,VDO DTCO tachograph (HGV/commercial vehicle)
+DRV,vehicle,observed,In-car dash cam
+CAR,vehicle,observed,Car hands-free / infotainment advert
+[TV],beacon,observed,Static TV (Samsung/LG) - fixed infrastructure
+samsung.,beacon,observed,Samsung appliance/TV advert; very few addresses seen constantly
+LEDBLE,beacon,observed,BLE LED lighting controller (typically fixed)
+Kontakt,beacon,known,Kontakt.io iBeacon
+Estimote,beacon,known,Estimote proximity beacon
+Gimbal,beacon,known,Gimbal proximity beacon
+iBeacon,beacon,known,Generic iBeacon advert
+LE_WH-1000,audio,observed,Sony WH-1000XM headphones
+LE_WF,audio,observed,Sony WF series earbuds
+LE_WI,audio,observed,Sony WI series neckband earphones
+LE-Bose,audio,observed,Bose SoundLink / headphones
+Bose,audio,known,Bose audio device
+MOMENTUM,audio,observed,Sennheiser MOMENTUM headphones
+ACCENTUM,audio,observed,Sennheiser ACCENTUM headphones
+Jabra,audio,observed,Jabra headset / earbuds
+JBL,audio,observed,JBL speaker / earbuds
+SOUNDPEATS,audio,observed,SOUNDPEATS earbuds
+EDIFIER,audio,observed,Edifier audio device
+EarFun,audio,observed,EarFun earbuds
+TOZO,audio,observed,TOZO earbuds
+JLab,audio,observed,JLab earbuds
+OpenFit,audio,observed,Shokz OpenFit open-ear earbuds
+soundcore,audio,known,Anker soundcore audio device
+WHOOP,wearable,observed,WHOOP fitness strap
+Smartwatch,wearable,observed,Generic smartwatch
+Tikkers,wearable,observed,Tikkers kids smartwatch
+ID205L,wearable,observed,Willful/ID205L smartwatch
+XiaomiWatch,wearable,observed,Xiaomi Watch
+Fitbit,wearable,known,Fitbit activity tracker
+Amazfit,wearable,known,Amazfit smartwatch
+TICKR,wearable,known,Wahoo TICKR heart-rate strap

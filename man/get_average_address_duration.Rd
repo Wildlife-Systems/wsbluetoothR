@@ -34,7 +34,7 @@ get_average_address_duration(
 
 \item{exclude_names}{Character vector. Exclude records where name starts with one of these prefixes. NULL = exclude none. Default is NULL.}
 
-\item{low_memory}{Logical. If TRUE, processes one device at a time to reduce memory usage (slower but uses less RAM). Default is FALSE.}
+\item{low_memory}{Logical. If TRUE, processes devices in batches to reduce peak RAM at the cost of re-reading the input once per batch (slower but uses less memory). The batch size defaults to 4 devices per pass and can be set via the \code{WSBT_DEVICES_PER_PASS} environment variable (1 = one device at a time). Default is FALSE.}
 
 \item{time_group}{Character. Time grouping: "day" or "hour". Default is "day".}
 }

@@ -237,7 +237,7 @@ plot_address_paths_map <- function(path_data,
       
       # Add curved polyline
       popup_text <- sprintf(
-        "<b>Flow:</b> %s → %s<br><b>Count:</b> %d addresses",
+        "<b>Flow:</b> %s -&gt; %s<br><b>Count:</b> %d addresses",
         links_agg$source[i], links_agg$target[i], links_agg$count[i]
       )
       

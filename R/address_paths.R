@@ -11,6 +11,9 @@
 #' @param devices Character vector. Filter by specific device IDs. NULL = all devices. Default is NULL.
 #' @param min_date Character or Date. Minimum date to include (YYYY-MM-DD or Date object). NULL = no minimum. Default is NULL.
 #' @param max_date Character or Date. Maximum date to include (YYYY-MM-DD or Date object). NULL = no maximum. Default is NULL.
+#' @param include_names Character vector. Only include records whose name starts with one of these prefixes. NULL = include all. Default is NULL.
+#' @param exclude_names Character vector. Exclude records whose name starts with one of these prefixes (e.g. \code{device_category_prefixes()}). NULL = exclude none. Default is NULL.
+#' @param exclude_addresses Character vector. Exclude these addresses entirely (all packets, named or not), e.g. the addresses from \code{\link{classify_addresses}}. NULL = exclude none. Default is NULL.
 #'
 #' @return A data.frame with columns:
 #'   \describe{
@@ -59,7 +62,9 @@
 #'
 #' @export
 get_address_paths <- function(files, top_n = 10, progress_interval = 10000, verbose = TRUE,
-                              devices = NULL, min_date = NULL, max_date = NULL) {
+                              devices = NULL, min_date = NULL, max_date = NULL,
+                              include_names = NULL, exclude_names = NULL,
+                              exclude_addresses = NULL) {
   
   # Validate input
   if (!is.character(files) || length(files) == 0) {
@@ -107,9 +112,15 @@ get_address_paths <- function(files, top_n = 10, progress_interval = 10000, verb
     progress_interval <- 0
   }
   
+  # Name/address filter parameters
+  include_list <- if (is.null(include_names)) NULL else as.character(include_names)
+  exclude_list <- if (is.null(exclude_names)) NULL else as.character(exclude_names)
+  exclude_addr <- if (is.null(exclude_addresses)) NULL else as.character(exclude_addresses)
+
   # Call C++ function
-  result <- calculate_address_paths(files, top_n, progress_interval, 
-                                   device_filter, min_date_str, max_date_str)
+  result <- calculate_address_paths(files, top_n, progress_interval,
+                                   device_filter, min_date_str, max_date_str,
+                                   include_list, exclude_list, exclude_addr)
   
   if (verbose && nrow(result) > 0) {
     cat("\nAddress Paths Summary:\n")

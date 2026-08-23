@@ -4,12 +4,16 @@
 \alias{plot_detection_heatmap}
 \title{Plot Detection Heatmap}
 \usage{
-plot_detection_heatmap(data, time_unit = "month")
+plot_detection_heatmap(data, time_unit = "month", log = FALSE)
 }
 \arguments{
 \item{data}{A bluetooth_data object or data.frame from \code{process_bluetooth()}.}
 
 \item{time_unit}{Character. Time aggregation: "hour", "day", "week", or "month". Default is "month".}
+
+\item{log}{Logical. If TRUE, map colors on a log10 scale (log10(count + 1)), revealing
+low-count structure at fine time resolutions (e.g. hourly) that a linear scale washes out.
+The legend is still labelled on the real detection-count scale. Default is FALSE (linear).}
 }
 \value{
 A base R heatmap showing device x time detection patterns.
@@ -21,5 +25,6 @@ Creates a heatmap showing detection patterns across devices and time periods.
 \dontrun{
 data <- process_bluetooth("data/combined_sort.txt")
 plot_detection_heatmap(data, time_unit = "day")
+plot_detection_heatmap(data, time_unit = "hour", log = TRUE)
 }
 }

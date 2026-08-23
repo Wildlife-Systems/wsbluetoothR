@@ -16,6 +16,7 @@
 #' plot_duration_distribution(durations, time_unit = "minutes", device = "16")
 #' }
 #'
+#' @importFrom graphics hist
 #' @export
 plot_duration_distribution <- function(duration_data, time_unit = "hours", device = NULL, bins = 30) {
   

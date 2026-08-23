@@ -13,7 +13,8 @@
 #' @param max_date Character or Date. Maximum date to include (YYYY-MM-DD or Date object). NULL = no maximum. Default is NULL.
 #' @param include_names Character vector. Only include records where name starts with one of these prefixes. NULL = include all. Default is NULL.
 #' @param exclude_names Character vector. Exclude records where name starts with one of these prefixes. NULL = exclude none. Default is NULL.
-#' @param low_memory Logical. If TRUE, processes one device at a time to reduce memory usage (slower but uses less RAM). Default is FALSE.
+#' @param low_memory Logical. If TRUE, processes devices in batches to reduce peak RAM at the cost of re-reading the input once per batch (slower but uses less memory). The batch size defaults to 4 devices per pass and can be set via the \code{WSBT_DEVICES_PER_PASS} environment variable (1 = one device at a time). Default is FALSE.
+#' @param exclude_addresses Character vector. Exclude these addresses entirely (all packets, named or not), e.g. the addresses from \code{\link{classify_addresses}}. NULL = exclude none. Default is NULL.
 #'
 #' @return A data.frame with columns:
 #'   \describe{
@@ -82,7 +83,7 @@
 get_address_duration <- function(files, progress_interval = 10000, verbose = TRUE,
                                  devices = NULL, min_date = NULL, max_date = NULL,
                                  include_names = NULL, exclude_names = NULL,
-                                 low_memory = FALSE) {
+                                 low_memory = FALSE, exclude_addresses = NULL) {
   
   # Validate input
   if (!is.character(files) || length(files) == 0) {
@@ -126,10 +127,13 @@ get_address_duration <- function(files, progress_interval = 10000, verbose = TRU
     progress_interval <- 0
   }
   
+  exclude_addr <- if (is.null(exclude_addresses)) NULL else as.character(exclude_addresses)
+
   # Call C++ function
-  result <- calculate_address_duration(files, progress_interval, 
+  result <- calculate_address_duration(files, progress_interval,
                                        device_filter, min_date_str, max_date_str,
-                                       include_list, exclude_list, low_memory)
+                                       include_list, exclude_list, low_memory,
+                                       exclude_addr)
   
   # Convert date to Date class
   result$date <- as.Date(result$date)

@@ -13,7 +13,8 @@ get_address_duration(
   max_date = NULL,
   include_names = NULL,
   exclude_names = NULL,
-  low_memory = FALSE
+  low_memory = FALSE,
+  exclude_addresses = NULL
 )
 }
 \arguments{
@@ -33,7 +34,9 @@ get_address_duration(
 
 \item{exclude_names}{Character vector. Exclude records where name starts with one of these prefixes. NULL = exclude none. Default is NULL.}
 
-\item{low_memory}{Logical. If TRUE, processes one device at a time to reduce memory usage (slower but uses less RAM). Default is FALSE.}
+\item{low_memory}{Logical. If TRUE, processes devices in batches to reduce peak RAM at the cost of re-reading the input once per batch (slower but uses less memory). The batch size defaults to 4 devices per pass and can be set via the \code{WSBT_DEVICES_PER_PASS} environment variable (1 = one device at a time). Default is FALSE.}
+
+\item{exclude_addresses}{Character vector. Exclude these addresses entirely (all packets, named or not), e.g. the addresses from \code{\link{classify_addresses}}. NULL = exclude none. Default is NULL.}
 }
 \value{
 A data.frame with columns:

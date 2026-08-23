@@ -12,6 +12,9 @@
 #' @param device_filter Character vector. Filter by specific device IDs. Empty = all devices.
 #' @param min_date String. Minimum date in YYYYMMDD format. Empty = no minimum.
 #' @param max_date String. Maximum date in YYYYMMDD format. Empty = no maximum.
+#' @param include_list Character vector. Only include records where name starts with these prefixes. Empty = no filter.
+#' @param exclude_list Character vector. Exclude records where name starts with these prefixes. Empty = no filter.
+#' @param exclude_addresses Character vector. Exclude these addresses entirely (all packets). Empty = no filter.
 #'
 #' @return A data.frame with columns:
 #'   \describe{
@@ -30,8 +33,32 @@
 #' }
 #'
 #' @export
-calculate_address_paths <- function(input_files, top_n = 10L, progress_interval = 10000L, device_filter = characterVector(), min_date = "", max_date = "") {
-    .Call(`_wsbluetoothR_calculate_address_paths`, input_files, top_n, progress_interval, device_filter, min_date, max_date)
+calculate_address_paths <- function(input_files, top_n = 10L, progress_interval = 10000L, device_filter = NULL, min_date = "", max_date = "", include_list = NULL, exclude_list = NULL, exclude_addresses = NULL) {
+    .Call(`_wsbluetoothR_calculate_address_paths`, input_files, top_n, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, exclude_addresses)
+}
+
+#' Find Bluetooth addresses whose advertised name matches a prefix
+#'
+#' Single pass over the raw data. For every record whose advertised name starts
+#' with one of \code{prefixes}, the address is recorded together with the prefix
+#' that matched. This promotes a per-packet name match to a per-address match, so
+#' that downstream steps can act on \emph{all} packets (named or not) for a
+#' device identified as a beacon, vehicle, bike, etc.
+#'
+#' @param input_files Character vector of file paths to process.
+#' @param prefixes Character vector of name prefixes to match.
+#' @param progress_interval Integer. How often to print progress (0 = no progress).
+#' @param device_filter Character vector. Restrict to these device IDs. Empty = all.
+#' @param min_date String. Minimum date in YYYYMMDD format. Empty = no minimum.
+#' @param max_date String. Maximum date in YYYYMMDD format. Empty = no maximum.
+#'
+#' @return A data.frame with one row per matched address: \code{address},
+#'   \code{name}, \code{matched_prefix}, \code{hits}, \code{first_seen},
+#'   \code{last_seen}.
+#'
+#' @keywords internal
+find_matching_addresses <- function(input_files, prefixes, progress_interval = 10000L, device_filter = NULL, min_date = "", max_date = "") {
+    .Call(`_wsbluetoothR_find_matching_addresses`, input_files, prefixes, progress_interval, device_filter, min_date, max_date)
 }
 
 #' Calculate Address Duration per Device and Day
@@ -43,7 +70,13 @@ calculate_address_paths <- function(input_files, top_n = 10L, progress_interval 
 #'
 #' @param input_files Character vector of file paths to process.
 #' @param progress_interval Integer. How often to print progress (0 = no progress). Default is 10000.
-#' @param low_memory Logical. If TRUE, processes one device at a time to reduce memory usage. Default is FALSE.
+#' @param device_filter Character vector. Filter by specific device IDs. Empty = all devices.
+#' @param min_date String. Minimum date in YYYYMMDD format. Empty = no minimum.
+#' @param max_date String. Maximum date in YYYYMMDD format. Empty = no maximum.
+#' @param include_list Character vector. Only include records where name starts with these prefixes.
+#' @param exclude_list Character vector. Exclude records where name starts with these prefixes.
+#' @param low_memory Logical. If TRUE, processes devices in batches (default 4 per pass, set via the \code{WSBT_DEVICES_PER_PASS} environment variable) to reduce peak memory, reading the input once per batch. Default is FALSE.
+#' @param exclude_addresses Character vector. Exclude these addresses entirely (all packets). Empty = no filter.
 #'
 #' @return A data.frame with columns:
 #'   \describe{
@@ -64,8 +97,8 @@ calculate_address_paths <- function(input_files, top_n = 10L, progress_interval 
 #' }
 #'
 #' @export
-calculate_address_duration <- function(input_files, progress_interval = 10000L, device_filter = characterVector(), min_date = "", max_date = "", include_list = characterVector(), exclude_list = characterVector(), low_memory = FALSE) {
-    .Call(`_wsbluetoothR_calculate_address_duration`, input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory)
+calculate_address_duration <- function(input_files, progress_interval = 10000L, device_filter = NULL, min_date = "", max_date = "", include_list = NULL, exclude_list = NULL, low_memory = FALSE, exclude_addresses = NULL) {
+    .Call(`_wsbluetoothR_calculate_address_duration`, input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory, exclude_addresses)
 }
 
 #' Calculate Average Address Duration per Device and Time Period
@@ -81,7 +114,9 @@ calculate_address_duration <- function(input_files, progress_interval = 10000L, 
 #' @param max_date String. Maximum date in YYYYMMDD format. Empty = no maximum.
 #' @param include_list Character vector. Only include records where name starts with these prefixes.
 #' @param exclude_list Character vector. Exclude records where name starts with these prefixes.
+#' @param low_memory Logical. If TRUE, processes devices in batches (default 4 per pass, set via the \code{WSBT_DEVICES_PER_PASS} environment variable) to reduce peak memory, reading the input once per batch. Default is FALSE.
 #' @param time_group String. Time grouping: "day" or "hour". Default is "day".
+#' @param exclude_addresses Character vector. Exclude these addresses entirely (all packets). Empty = no filter.
 #'
 #' @return A data.frame with columns:
 #'   \describe{
@@ -96,8 +131,8 @@ calculate_address_duration <- function(input_files, progress_interval = 10000L, 
 #'   }
 #'
 #' @export
-calculate_average_address_duration <- function(input_files, progress_interval = 10000L, device_filter = characterVector(), min_date = "", max_date = "", include_list = characterVector(), exclude_list = characterVector(), low_memory = FALSE, time_group = "day") {
-    .Call(`_wsbluetoothR_calculate_average_address_duration`, input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory, time_group)
+calculate_average_address_duration <- function(input_files, progress_interval = 10000L, device_filter = NULL, min_date = "", max_date = "", include_list = NULL, exclude_list = NULL, low_memory = FALSE, time_group = "day", exclude_addresses = NULL) {
+    .Call(`_wsbluetoothR_calculate_average_address_duration`, input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory, time_group, exclude_addresses)
 }
 
 get_unique_device_names <- function(input_file, progress_interval = 10000L) {
@@ -108,7 +143,7 @@ find_common_prefixes_cpp <- function(device_names, min_length = 3L, min_count = 
     .Call(`_wsbluetoothR_find_common_prefixes_cpp`, device_names, min_length, min_count, stop_char)
 }
 
-process_bluetooth_files <- function(input_files, progress_interval = 1000L, include_prefixes = NULL, exclude_prefixes = NULL) {
-    .Call(`_wsbluetoothR_process_bluetooth_files`, input_files, progress_interval, include_prefixes, exclude_prefixes)
+process_bluetooth_files <- function(input_files, progress_interval = 1000L, include_prefixes = NULL, exclude_prefixes = NULL, exclude_addresses = NULL) {
+    .Call(`_wsbluetoothR_process_bluetooth_files`, input_files, progress_interval, include_prefixes, exclude_prefixes, exclude_addresses)
 }
 

@@ -9,6 +9,7 @@ process_bluetooth(
   progress_interval = 1000,
   include_prefixes = NULL,
   exclude_prefixes = NULL,
+  exclude_addresses = NULL,
   verbose = TRUE
 )
 }
@@ -25,6 +26,10 @@ where the name field starts with one of these prefixes. Default is NULL (no filt
 
 \item{exclude_prefixes}{Character vector or NULL. If provided, exclude records
 where the name field starts with one of these prefixes. Default is NULL (no filtering).}
+
+\item{exclude_addresses}{Character vector or NULL. If provided, exclude records
+for these addresses entirely (all packets, named or not), e.g. the addresses
+returned by \code{\link{classify_addresses}}. Default is NULL (no filtering).}
 
 \item{verbose}{Logical. If TRUE (default), print processing messages to console.
 Set to FALSE to suppress output.}

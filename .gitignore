@@ -10,3 +10,6 @@ out.pdf
 Rplot*.pdf
 derived_data/
 data/
+
+# Locally generated processed data / analysis artefacts
+*.rds

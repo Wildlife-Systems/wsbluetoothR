@@ -5,6 +5,8 @@ S3method(summary,bluetooth_data)
 export(calculate_address_duration)
 export(calculate_address_paths)
 export(calculate_average_address_duration)
+export(classify_addresses)
+export(device_category_prefixes)
 export(find_common_prefixes)
 export(get_address_duration)
 export(get_address_paths)
@@ -22,17 +24,27 @@ export(plot_duration_timeline)
 export(plot_prefix_distribution)
 export(plot_top_addresses)
 export(process_bluetooth)
+export(remove_addresses)
 export(rename_path_devices)
 importFrom(Rcpp,evalCpp)
-importFrom(grDevices,colorRampPalette)
-importFrom(grDevices,rainbow)
-importFrom(graphics,axis)
-importFrom(graphics,barplot)
-importFrom(graphics,image)
-importFrom(graphics,legend)
-importFrom(graphics,lines)
-importFrom(graphics,par)
-importFrom(graphics,points)
-importFrom(stats,aggregate)
-importFrom(stats,median)
+importFrom(grDevices,
+  colorRampPalette,
+  rainbow
+)
+importFrom(graphics,
+  axis,
+  barplot,
+  hist,
+  image,
+  legend,
+  lines,
+  par,
+  points
+)
+importFrom(magrittr,"%>%")
+importFrom(stats,
+  aggregate,
+  as.formula,
+  median
+)
 useDynLib(wsbluetoothR, .registration = TRUE)

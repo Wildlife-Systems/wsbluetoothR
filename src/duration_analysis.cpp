@@ -1,6 +1,7 @@
 #include <Rcpp.h>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <vector>
 #include <fstream>
@@ -10,29 +11,19 @@
 #include <cstring>
 #include <cstdlib>
 
+#include "parallel_read.h"
+
 using namespace Rcpp;
 
-// Helper function to check if name starts with any prefix in the list
-static bool starts_with_any(const std::string& name, const std::vector<std::string>& prefixes) {
-  if (prefixes.empty()) {
-    return false;
-  }
-  
-  // Trim leading whitespace from name
-  size_t start = 0;
-  while (start < name.length() && std::isspace(name[start])) {
-    start++;
-  }
-  
-  std::string trimmed_name = name.substr(start);
-  
-  for (const auto& prefix : prefixes) {
-    if (trimmed_name.length() >= prefix.length() &&
-        trimmed_name.substr(0, prefix.length()) == prefix) {
-      return true;
+// Convert a Nullable<CharacterVector> (default NULL) to std::vector<std::string>.
+// Returns an empty vector when the argument is NULL (the default).
+static std::vector<std::string> nullable_to_str_vec(Rcpp::Nullable<Rcpp::CharacterVector> x) {
+    std::vector<std::string> out;
+    if (x.isNotNull()) {
+        Rcpp::CharacterVector cv = Rcpp::as<Rcpp::CharacterVector>(x);
+        for (int i = 0; i < cv.size(); i++) out.push_back(Rcpp::as<std::string>(cv[i]));
     }
-  }
-  return false;
+    return out;
 }
 
 // Structure to store time range and detection count
@@ -50,29 +41,25 @@ struct TimeRange {
 };
 
 // Parse datetime string in format YYYYMMDD-HHMMSS to time_t
-std::time_t parse_datetime(const std::string& datetime_str) {
+std::time_t parse_datetime(std::string_view datetime_str) {
     if (datetime_str.length() < 15) {
         return -1;
     }
-    
+
     struct tm tm = {0};
-    
-    // Extract components: YYYYMMDD-HHMMSS
+
+    // Extract components: YYYYMMDD-HHMMSS (fixed offsets; views are not
+    // null-terminated, so copy fixed byte counts rather than using c_str()).
     char year[5], month[3], day[3], hour[3], min[3], sec[3];
-    
-    std::strncpy(year, datetime_str.c_str(), 4);
-    year[4] = '\0';
-    std::strncpy(month, datetime_str.c_str() + 4, 2);
-    month[2] = '\0';
-    std::strncpy(day, datetime_str.c_str() + 6, 2);
-    day[2] = '\0';
-    std::strncpy(hour, datetime_str.c_str() + 9, 2);
-    hour[2] = '\0';
-    std::strncpy(min, datetime_str.c_str() + 11, 2);
-    min[2] = '\0';
-    std::strncpy(sec, datetime_str.c_str() + 13, 2);
-    sec[2] = '\0';
-    
+    const char* s = datetime_str.data();
+
+    std::memcpy(year, s, 4);       year[4] = '\0';
+    std::memcpy(month, s + 4, 2);  month[2] = '\0';
+    std::memcpy(day, s + 6, 2);    day[2] = '\0';
+    std::memcpy(hour, s + 9, 2);   hour[2] = '\0';
+    std::memcpy(min, s + 11, 2);   min[2] = '\0';
+    std::memcpy(sec, s + 13, 2);   sec[2] = '\0';
+
     tm.tm_year = std::atoi(year) - 1900;
     tm.tm_mon = std::atoi(month) - 1;
     tm.tm_mday = std::atoi(day);
@@ -80,80 +67,65 @@ std::time_t parse_datetime(const std::string& datetime_str) {
     tm.tm_min = std::atoi(min);
     tm.tm_sec = std::atoi(sec);
     tm.tm_isdst = -1;  // Let mktime determine DST
-    
+
     return std::mktime(&tm);
 }
 
 // Extract date string in format YYYY-MM-DD from datetime string
-std::string extract_date(const std::string& datetime_str) {
+std::string extract_date(std::string_view datetime_str) {
     if (datetime_str.length() < 8) {
         return "";
     }
-    
-    std::string year = datetime_str.substr(0, 4);
-    std::string month = datetime_str.substr(4, 2);
-    std::string day = datetime_str.substr(6, 2);
-    
-    return year + "-" + month + "-" + day;
+
+    std::string out;
+    out.reserve(10);
+    out.append(datetime_str.data(), 4);       // YYYY
+    out.push_back('-');
+    out.append(datetime_str.data() + 4, 2);   // MM
+    out.push_back('-');
+    out.append(datetime_str.data() + 6, 2);   // DD
+    return out;
 }
 
-// Scan files to find all unique devices
+// Scan files to find all unique devices (parallel, allocation-free parsing).
 std::vector<std::string> scan_unique_devices(const std::vector<std::string>& input_files,
                                              const std::vector<std::string>& device_filter_vec,
                                              const std::string& min_date,
                                              const std::string& max_date) {
-    std::unordered_set<std::string> device_set_unique;
+    std::unordered_set<std::string> device_filter_set(device_filter_vec.begin(), device_filter_vec.end());
     bool filter_device = !device_filter_vec.empty();
     bool filter_min_date = !min_date.empty();
     bool filter_max_date = !max_date.empty();
-    
-    std::unordered_set<std::string> device_filter_set(device_filter_vec.begin(), device_filter_vec.end());
-    
-    for (const auto& input_file : input_files) {
-        std::ifstream file(input_file);
-        if (!file.is_open()) {
-            continue;
+
+    struct ScanAcc { std::unordered_set<std::string> devices; };
+
+    auto line_fn = [&](ScanAcc& acc, const std::string& line) {
+        std::string_view tok[2], rest;
+        if (wsbt::split_fields(line, tok, 2, rest) < 2) return;
+        std::string_view device = tok[0];
+        std::string_view datetime = tok[1];
+
+        if (filter_device &&
+            device_filter_set.find(std::string(device)) == device_filter_set.end()) {
+            return;
         }
-        
-        std::string line;
-        int line_count = 0;
-        
-        while (std::getline(file, line)) {
-            line_count++;
-            
-            // Check for user interrupts periodically
-            if (line_count % 50000 == 0) {
-                Rcpp::checkUserInterrupt();
-            }
-            
-            std::istringstream iss(line);
-            std::string device, datetime;
-            
-            if (!(iss >> device >> datetime)) {
-                continue;
-            }
-            
-            // Apply device filter
-            if (filter_device && device_filter_set.find(device) == device_filter_set.end()) {
-                continue;
-            }
-            
-            // Apply date filters
-            std::string date_str = datetime.substr(0, 8);
-            if (filter_min_date && date_str < min_date) {
-                continue;
-            }
-            if (filter_max_date && date_str > max_date) {
-                continue;
-            }
-            
-            device_set_unique.insert(device);
+        std::string_view date_str = datetime.substr(0, 8);
+        if (filter_min_date && date_str < std::string_view(min_date)) return;
+        if (filter_max_date && date_str > std::string_view(max_date)) return;
+
+        acc.devices.emplace(device);
+    };
+
+    auto merge_fn = [](ScanAcc& dst, ScanAcc& src) {
+        if (dst.devices.empty()) {
+            dst.devices = std::move(src.devices);
+            return;
         }
-        
-        file.close();
-    }
-    
-    return std::vector<std::string>(device_set_unique.begin(), device_set_unique.end());
+        for (const auto& d : src.devices) dst.devices.insert(d);
+    };
+
+    ScanAcc acc = wsbt::parallel_reduce_files<ScanAcc>(input_files, line_fn, merge_fn);
+    return std::vector<std::string>(acc.devices.begin(), acc.devices.end());
 }
 
 // Extract hour string from datetime in format YYYYMMDD-HHMMSS to YYYY-MM-DD-HH
@@ -179,7 +151,13 @@ std::string extract_datetime_hour(const std::string& datetime_str) {
 //'
 //' @param input_files Character vector of file paths to process.
 //' @param progress_interval Integer. How often to print progress (0 = no progress). Default is 10000.
-//' @param low_memory Logical. If TRUE, processes one device at a time to reduce memory usage. Default is FALSE.
+//' @param device_filter Character vector. Filter by specific device IDs. Empty = all devices.
+//' @param min_date String. Minimum date in YYYYMMDD format. Empty = no minimum.
+//' @param max_date String. Maximum date in YYYYMMDD format. Empty = no maximum.
+//' @param include_list Character vector. Only include records where name starts with these prefixes.
+//' @param exclude_list Character vector. Exclude records where name starts with these prefixes.
+//' @param low_memory Logical. If TRUE, processes devices in batches (default 4 per pass, set via the \code{WSBT_DEVICES_PER_PASS} environment variable) to reduce peak memory, reading the input once per batch. Default is FALSE.
+//' @param exclude_addresses Character vector. Exclude these addresses entirely (all packets). Empty = no filter.
 //'
 //' @return A data.frame with columns:
 //'   \describe{
@@ -203,53 +181,66 @@ std::string extract_datetime_hour(const std::string& datetime_str) {
 // [[Rcpp::export]]
 DataFrame calculate_address_duration(std::vector<std::string> input_files,
                                      int progress_interval = 10000,
-                                     Rcpp::CharacterVector device_filter = Rcpp::CharacterVector(),
+                                     Rcpp::Nullable<Rcpp::CharacterVector> device_filter = R_NilValue,
                                      std::string min_date = "",
                                      std::string max_date = "",
-                                     Rcpp::CharacterVector include_list = Rcpp::CharacterVector(),
-                                     Rcpp::CharacterVector exclude_list = Rcpp::CharacterVector(),
-                                     bool low_memory = false) {
+                                     Rcpp::Nullable<Rcpp::CharacterVector> include_list = R_NilValue,
+                                     Rcpp::Nullable<Rcpp::CharacterVector> exclude_list = R_NilValue,
+                                     bool low_memory = false,
+                                     Rcpp::Nullable<Rcpp::CharacterVector> exclude_addresses = R_NilValue) {
+
+    // Convert Rcpp vectors to std::vector (NULL default -> empty)
+    std::vector<std::string> device_filter_vec = nullable_to_str_vec(device_filter);
+    std::vector<std::string> include_list_vec = nullable_to_str_vec(include_list);
+    std::vector<std::string> exclude_list_vec = nullable_to_str_vec(exclude_list);
+
+    // Addresses to exclude entirely (all packets, named or not)
+    std::vector<std::string> exclude_addr_vec = nullable_to_str_vec(exclude_addresses);
+    std::unordered_set<std::string> exclude_addr_set(exclude_addr_vec.begin(), exclude_addr_vec.end());
+    bool filter_address = !exclude_addr_vec.empty();
     
-    // Convert Rcpp vectors to std::vector
-    std::vector<std::string> device_filter_vec = Rcpp::as<std::vector<std::string>>(device_filter);
-    std::vector<std::string> include_list_vec = Rcpp::as<std::vector<std::string>>(include_list);
-    std::vector<std::string> exclude_list_vec = Rcpp::as<std::vector<std::string>>(exclude_list);
-    
-    // Low-memory mode: process one device at a time
+    // Low-memory mode: process the devices in batches to bound peak memory,
+    // reading the files once per batch instead of once per device.
     if (low_memory) {
         Rcout << "Low-memory mode: scanning for unique devices...\n";
         R_FlushConsole();
-        
+
         // First scan to find all unique devices
         std::vector<std::string> unique_devices = scan_unique_devices(input_files, device_filter_vec, min_date, max_date);
-        
-        Rcout << "Found " << unique_devices.size() << " unique device(s)\n";
-        Rcout << "Processing devices one at a time...\n";
+
+        size_t per_pass = static_cast<size_t>(wsbt::devices_per_pass());
+        size_t n_passes = per_pass > 0 ? (unique_devices.size() + per_pass - 1) / per_pass : 0;
+
+        Rcout << "Found " << unique_devices.size() << " unique device(s); "
+              << per_pass << " per pass (" << n_passes << " pass(es))...\n";
         R_FlushConsole();
-        
+
         // Prepare result vectors
         std::vector<std::string> all_devices, all_dates, all_addresses, all_first_seen, all_last_seen;
         std::vector<double> all_durations;
         std::vector<int> all_counts;
-        
-        // Process each device separately
-        for (size_t dev_idx = 0; dev_idx < unique_devices.size(); dev_idx++) {
-            const std::string& current_device = unique_devices[dev_idx];
-            
-            Rcout << "Processing device " << (dev_idx + 1) << "/" << unique_devices.size() 
-                  << " (ID: " << current_device << ")...\n";
+
+        // Process a batch of devices per pass
+        for (size_t start = 0; start < unique_devices.size(); start += per_pass) {
+            size_t end = std::min(start + per_pass, unique_devices.size());
+
+            Rcpp::CharacterVector batch(end - start);
+            for (size_t i = start; i < end; i++) {
+                batch[i - start] = unique_devices[i];
+            }
+
+            Rcout << "Processing pass " << (start / per_pass + 1) << "/" << n_passes
+                  << " (" << (end - start) << " device(s))...\n";
             R_FlushConsole();
-            
-            // Create single-device filter
-            Rcpp::CharacterVector single_device = Rcpp::CharacterVector::create(current_device);
-            
-            // Process this device (recursive call with low_memory=false)
+
+            // Process this batch (recursive call with low_memory=false)
             DataFrame device_result = calculate_address_duration(
                 input_files, 0,  // progress_interval = 0 for inner calls
-                single_device, min_date, max_date,
-                include_list, exclude_list, false  // low_memory = false
+                Rcpp::Nullable<Rcpp::CharacterVector>(batch), min_date, max_date,
+                include_list, exclude_list, false,  // low_memory = false
+                exclude_addresses
             );
-            
+
             // Append results
             CharacterVector dev_vec = device_result["device"];
             CharacterVector date_vec = device_result["date"];
@@ -258,7 +249,7 @@ DataFrame calculate_address_duration(std::vector<std::string> input_files,
             CharacterVector last_vec = device_result["last_seen"];
             NumericVector dur_vec = device_result["duration_seconds"];
             IntegerVector cnt_vec = device_result["detection_count"];
-            
+
             for (int i = 0; i < dev_vec.size(); i++) {
                 all_devices.push_back(as<std::string>(dev_vec[i]));
                 all_dates.push_back(as<std::string>(date_vec[i]));
@@ -269,7 +260,7 @@ DataFrame calculate_address_duration(std::vector<std::string> input_files,
                 all_counts.push_back(cnt_vec[i]);
             }
         }
-        
+
         Rcout << "Low-memory processing complete. Total records: " << all_devices.size() << "\n";
         
         return DataFrame::create(
@@ -284,153 +275,164 @@ DataFrame calculate_address_duration(std::vector<std::string> input_files,
         );
     }
     
-    // Normal mode: process all devices at once
-    
-    // Key: device_date_address -> TimeRange
-    // Use unordered_map for O(1) lookups instead of O(log n)
-    std::unordered_map<std::string, TimeRange> duration_map;
-    duration_map.reserve(10000);  // Pre-allocate for typical dataset
-    
+    // Normal mode: process all files at once, reading them in parallel.
+
     // Setup filters
     std::unordered_set<std::string> device_set(device_filter_vec.begin(), device_filter_vec.end());
     bool filter_device = !device_filter_vec.empty();
     bool filter_min_date = !min_date.empty();
     bool filter_max_date = !max_date.empty();
-    
-    size_t total_lines = 0;
-    size_t filtered_lines = 0;
-    
-    // Process each file
-    for (const auto& input_file : input_files) {
-        std::ifstream file(input_file);
-        if (!file.is_open()) {
-            Rcout << "Warning: Cannot open file: " << input_file << "\n";
-            continue;
+
+    // Per-thread accumulator: device_date_address -> TimeRange, plus counters.
+    struct DurAcc {
+        std::unordered_map<std::string, TimeRange> map;
+        size_t lines = 0;
+        size_t filtered = 0;
+    };
+
+    // Warm up the C library's timezone state on the main thread: parse_datetime
+    // -> mktime initialises it lazily, and that must not first happen from
+    // several worker threads at once.
+    (void) parse_datetime("20200101-000000");
+
+    // Per-line work (runs on worker threads; touches only its accumulator).
+    auto line_fn = [&](DurAcc& acc, const std::string& line) {
+        acc.lines++;
+
+        // Parse the four whitespace-delimited fields as views into `line`.
+        std::string_view tok[4], name;
+        if (wsbt::split_fields(line, tok, 4, name) < 4) {
+            return;  // Skip malformed lines
         }
-        
-        std::string line;
-        int line_count = 0;
-        
-        while (std::getline(file, line)) {
-            line_count++;
-            total_lines++;
-            
-            // Check for user interrupts periodically
-            if (line_count % 10000 == 0) {
-                Rcpp::checkUserInterrupt();
-            }
-            
-            // Output progress
-            if (progress_interval > 0 && total_lines % progress_interval == 0) {
-                Rcout << "Processed " << total_lines << " lines...\n";
-                R_FlushConsole();
-            }
-            
-            // Parse line: device datetime address power name
-            std::istringstream iss(line);
-            std::string device, datetime, address, power, name;
-            
-            if (!(iss >> device >> datetime >> address >> power)) {
-                continue;  // Skip malformed lines
-            }
-            
-            // Get the rest of the line as name (optional)
-            std::getline(iss, name);
-            
-            // Apply name filtering (same logic as process_bluetooth)
-            bool should_include = true;
-            
-            // If include list provided, name must start with one of the prefixes
-            if (!include_list_vec.empty()) {
-                should_include = starts_with_any(name, include_list_vec);
-            }
-            
-            // If exclude list provided, name must NOT start with any of the prefixes
-            if (should_include && !exclude_list_vec.empty()) {
-                should_include = !starts_with_any(name, exclude_list_vec);
-            }
-            
-            if (!should_include) {
-                filtered_lines++;
-                continue;
-            }
-            
-            // Apply device filter
-            if (filter_device && device_set.find(device) == device_set.end()) {
-                filtered_lines++;
-                continue;
-            }
-            
-            // Extract date for filtering
-            std::string date_str = datetime.substr(0, 8);  // YYYYMMDD
-            
-            // Apply date filters
-            if (filter_min_date && date_str < min_date) {
-                filtered_lines++;
-                continue;
-            }
-            if (filter_max_date && date_str > max_date) {
-                filtered_lines++;
-                continue;
-            }
-            
-            // Parse datetime to time_t
-            std::time_t timestamp = parse_datetime(datetime);
-            if (timestamp == -1) {
-                continue;  // Skip invalid datetime
-            }
-            
-            // Extract date
-            std::string date = extract_date(datetime);
-            if (date.empty()) {
-                continue;
-            }
-            
-            // Create key: device_date_address
-            // Reserve space to avoid reallocations
-            std::string key;
-            key.reserve(device.length() + date.length() + address.length() + 2);
-            key = device + "_" + date + "_" + address;
-            
-            // Update or create entry
-            auto& entry = duration_map[key];
-            
-            if (entry.count == 0) {
-                // First detection - store parsed components
+        std::string_view device = tok[0];
+        std::string_view datetime = tok[1];
+        std::string_view address = tok[2];
+
+        // Drop all packets for excluded addresses (e.g. classified devices)
+        if (filter_address &&
+            exclude_addr_set.find(std::string(address)) != exclude_addr_set.end()) {
+            acc.filtered++;
+            return;
+        }
+
+        // Apply name filtering (name is the remainder of the line)
+        bool should_include = true;
+        if (!include_list_vec.empty()) {
+            should_include = wsbt::name_starts_with_any_sv(name, include_list_vec);
+        }
+        if (should_include && !exclude_list_vec.empty()) {
+            should_include = !wsbt::name_starts_with_any_sv(name, exclude_list_vec);
+        }
+        if (!should_include) {
+            acc.filtered++;
+            return;
+        }
+
+        // Apply device filter
+        if (filter_device && device_set.find(std::string(device)) == device_set.end()) {
+            acc.filtered++;
+            return;
+        }
+
+        // Apply date filters
+        std::string_view date_str = datetime.substr(0, 8);  // YYYYMMDD
+        if (filter_min_date && date_str < std::string_view(min_date)) {
+            acc.filtered++;
+            return;
+        }
+        if (filter_max_date && date_str > std::string_view(max_date)) {
+            acc.filtered++;
+            return;
+        }
+
+        // Parse datetime to time_t
+        std::time_t timestamp = parse_datetime(datetime);
+        if (timestamp == -1) {
+            return;  // Skip invalid datetime
+        }
+
+        std::string date = extract_date(datetime);
+        if (date.empty()) {
+            return;
+        }
+
+        // Create key: device_date_address
+        std::string key;
+        key.reserve(device.size() + date.size() + address.size() + 2);
+        key.append(device.data(), device.size());
+        key.push_back('_');
+        key.append(date);
+        key.push_back('_');
+        key.append(address.data(), address.size());
+
+        auto& entry = acc.map[std::move(key)];
+        if (entry.count == 0) {
+            // First detection - store parsed components
+            entry.first_seen = timestamp;
+            entry.last_seen = timestamp;
+            entry.count = 1;
+            entry.device.assign(device.data(), device.size());
+            entry.date = date;
+            entry.address.assign(address.data(), address.size());
+
+            char buf[20];
+            std::tm tmv = wsbt::localtime_safe(timestamp);
+            std::strftime(buf, sizeof(buf), "%Y%m%d-%H%M%S", &tmv);
+            entry.first_seen_str = std::string(buf);
+            entry.last_seen_str = entry.first_seen_str;
+        } else {
+            if (timestamp < entry.first_seen) {
                 entry.first_seen = timestamp;
-                entry.last_seen = timestamp;
-                entry.count = 1;
-                entry.device = device;
-                entry.date = date;
-                entry.address = address;
-                
-                // Format timestamps immediately
                 char buf[20];
-                std::strftime(buf, sizeof(buf), "%Y%m%d-%H%M%S", std::localtime(&timestamp));
+                std::tm tmv = wsbt::localtime_safe(timestamp);
+                std::strftime(buf, sizeof(buf), "%Y%m%d-%H%M%S", &tmv);
                 entry.first_seen_str = std::string(buf);
-                entry.last_seen_str = entry.first_seen_str;
+            }
+            if (timestamp > entry.last_seen) {
+                entry.last_seen = timestamp;
+                char buf[20];
+                std::tm tmv = wsbt::localtime_safe(timestamp);
+                std::strftime(buf, sizeof(buf), "%Y%m%d-%H%M%S", &tmv);
+                entry.last_seen_str = std::string(buf);
+            }
+            entry.count++;
+        }
+    };
+
+    // Fold one accumulator into another (runs on the main thread).
+    auto merge_fn = [](DurAcc& dst, DurAcc& src) {
+        dst.lines += src.lines;
+        dst.filtered += src.filtered;
+        if (dst.map.empty()) {
+            dst.map = std::move(src.map);
+            return;
+        }
+        for (auto& kv : src.map) {
+            auto it = dst.map.find(kv.first);
+            if (it == dst.map.end()) {
+                dst.map.emplace(kv.first, std::move(kv.second));
             } else {
-                // Update time range
-                if (timestamp < entry.first_seen) {
-                    entry.first_seen = timestamp;
-                    // Update first_seen string
-                    char buf[20];
-                    std::strftime(buf, sizeof(buf), "%Y%m%d-%H%M%S", std::localtime(&timestamp));
-                    entry.first_seen_str = std::string(buf);
+                TimeRange& d = it->second;
+                TimeRange& s = kv.second;
+                if (s.first_seen < d.first_seen) {
+                    d.first_seen = s.first_seen;
+                    d.first_seen_str = std::move(s.first_seen_str);
                 }
-                if (timestamp > entry.last_seen) {
-                    entry.last_seen = timestamp;
-                    // Update last_seen string
-                    char buf[20];
-                    std::strftime(buf, sizeof(buf), "%Y%m%d-%H%M%S", std::localtime(&timestamp));
-                    entry.last_seen_str = std::string(buf);
+                if (s.last_seen > d.last_seen) {
+                    d.last_seen = s.last_seen;
+                    d.last_seen_str = std::move(s.last_seen_str);
                 }
-                entry.count++;
+                d.count += s.count;
             }
         }
-        
-        file.close();
-    }
+    };
+
+    DurAcc acc = wsbt::parallel_reduce_files<DurAcc>(input_files, line_fn, merge_fn);
+
+    // Alias so the existing summary + DataFrame-construction code is unchanged.
+    std::unordered_map<std::string, TimeRange>& duration_map = acc.map;
+    size_t total_lines = acc.lines;
+    size_t filtered_lines = acc.filtered;
     
     Rcout << "Total lines processed: " << total_lines << "\n";
     if (filtered_lines > 0) {
@@ -501,7 +503,9 @@ DataFrame calculate_address_duration(std::vector<std::string> input_files,
 //' @param max_date String. Maximum date in YYYYMMDD format. Empty = no maximum.
 //' @param include_list Character vector. Only include records where name starts with these prefixes.
 //' @param exclude_list Character vector. Exclude records where name starts with these prefixes.
+//' @param low_memory Logical. If TRUE, processes devices in batches (default 4 per pass, set via the \code{WSBT_DEVICES_PER_PASS} environment variable) to reduce peak memory, reading the input once per batch. Default is FALSE.
 //' @param time_group String. Time grouping: "day" or "hour". Default is "day".
+//' @param exclude_addresses Character vector. Exclude these addresses entirely (all packets). Empty = no filter.
 //'
 //' @return A data.frame with columns:
 //'   \describe{
@@ -519,18 +523,20 @@ DataFrame calculate_address_duration(std::vector<std::string> input_files,
 // [[Rcpp::export]]
 DataFrame calculate_average_address_duration(std::vector<std::string> input_files,
                                            int progress_interval = 10000,
-                                           Rcpp::CharacterVector device_filter = Rcpp::CharacterVector(),
+                                           Rcpp::Nullable<Rcpp::CharacterVector> device_filter = R_NilValue,
                                            std::string min_date = "",
                                            std::string max_date = "",
-                                           Rcpp::CharacterVector include_list = Rcpp::CharacterVector(),
-                                           Rcpp::CharacterVector exclude_list = Rcpp::CharacterVector(),
+                                           Rcpp::Nullable<Rcpp::CharacterVector> include_list = R_NilValue,
+                                           Rcpp::Nullable<Rcpp::CharacterVector> exclude_list = R_NilValue,
                                            bool low_memory = false,
-                                           std::string time_group = "day") {
-    
+                                           std::string time_group = "day",
+                                           Rcpp::Nullable<Rcpp::CharacterVector> exclude_addresses = R_NilValue) {
+
     // First get daily durations using existing function
     DataFrame daily = calculate_address_duration(input_files, progress_interval,
                                                  device_filter, min_date, max_date,
-                                                 include_list, exclude_list, low_memory);
+                                                 include_list, exclude_list, low_memory,
+                                                 exclude_addresses);
     
     // Extract columns
     std::vector<std::string> devices = as<std::vector<std::string>>(daily["device"]);
@@ -565,26 +571,39 @@ DataFrame calculate_average_address_duration(std::vector<std::string> input_file
         detection_map[key] += counts[i];
     }
     
-    // Calculate statistics for each device-time period pair
-    std::vector<std::string> out_devices, out_datetimes;
-    std::vector<double> out_median, out_mean, out_min, out_max;
-    std::vector<int> out_address_count, out_detections;
-    
-    size_t counter = 0;
+    // Calculate statistics for each device-time period pair.
+    // Snapshot duration_map into an index-addressable vector so each key's
+    // statistics (independent of every other key) can be computed in parallel.
+    std::vector<const std::pair<const std::string, std::vector<double>>*> stat_entries;
+    stat_entries.reserve(duration_map.size());
     for (const auto& pair : duration_map) {
-        // Check for user interrupts periodically
-        if (++counter % 1000 == 0) {
-            Rcpp::checkUserInterrupt();
-        }
-        
-        const std::string& key = pair.first;
-        const std::vector<double>& vals = pair.second;
-        
+        stat_entries.push_back(&pair);
+    }
+
+    size_t n_entries = stat_entries.size();
+    std::vector<std::string> out_devices(n_entries), out_datetimes(n_entries);
+    std::vector<double> out_median(n_entries), out_mean(n_entries), out_min(n_entries), out_max(n_entries);
+    std::vector<int> out_address_count(n_entries), out_detections(n_entries);
+
+    // Last chance to interrupt before the parallel region.
+    Rcpp::checkUserInterrupt();
+
+    // address_map / detection_map are only read here, via at() (never
+    // operator[], which would insert). The standard treats at() as const for
+    // data-race purposes, so concurrent reads are safe. Each iteration writes
+    // only its own output slots, and no R API is touched inside the loop.
+    #ifdef _OPENMP
+    #pragma omp parallel for schedule(dynamic, 256)
+    #endif
+    for (std::ptrdiff_t i = 0; i < static_cast<std::ptrdiff_t>(n_entries); i++) {
+        const std::string& key = stat_entries[i]->first;
+        const std::vector<double>& vals = stat_entries[i]->second;
+
         // Parse key: device_datetime
         size_t underscore = key.find('_');
         std::string device = key.substr(0, underscore);
         std::string datetime = key.substr(underscore + 1);
-        
+
         // Calculate median
         std::vector<double> sorted_vals = vals;
         std::sort(sorted_vals.begin(), sorted_vals.end());
@@ -595,25 +614,25 @@ DataFrame calculate_average_address_duration(std::vector<std::string> input_file
         } else {
             median = sorted_vals[n/2];
         }
-        
+
         // Calculate mean
         double sum = 0;
         for (double v : vals) sum += v;
         double mean = sum / vals.size();
-        
+
         // Min and max
         double min_val = *std::min_element(vals.begin(), vals.end());
         double max_val = *std::max_element(vals.begin(), vals.end());
-        
+
         // Store results
-        out_devices.push_back(device);
-        out_datetimes.push_back(datetime);
-        out_median.push_back(median);
-        out_mean.push_back(mean);
-        out_min.push_back(min_val);
-        out_max.push_back(max_val);
-        out_address_count.push_back(address_map[key].size());
-        out_detections.push_back(detection_map[key]);
+        out_devices[i] = device;
+        out_datetimes[i] = datetime;
+        out_median[i] = median;
+        out_mean[i] = mean;
+        out_min[i] = min_val;
+        out_max[i] = max_val;
+        out_address_count[i] = static_cast<int>(address_map.at(key).size());
+        out_detections[i] = detection_map.at(key);
     }
     
     // Create DataFrame

@@ -13,7 +13,7 @@
 #' @param max_date Character or Date. Maximum date to include (YYYY-MM-DD or Date object). NULL = no maximum. Default is NULL.
 #' @param include_names Character vector. Only include records where name starts with one of these prefixes. NULL = include all. Default is NULL.
 #' @param exclude_names Character vector. Exclude records where name starts with one of these prefixes. NULL = exclude none. Default is NULL.
-#' @param low_memory Logical. If TRUE, processes one device at a time to reduce memory usage (slower but uses less RAM). Default is FALSE.
+#' @param low_memory Logical. If TRUE, processes devices in batches to reduce peak RAM at the cost of re-reading the input once per batch (slower but uses less memory). The batch size defaults to 4 devices per pass and can be set via the \code{WSBT_DEVICES_PER_PASS} environment variable (1 = one device at a time). Default is FALSE.
 #' @param time_group Character. Time grouping: "day" or "hour". Default is "day".
 #'
 #' @return A data.frame with columns:

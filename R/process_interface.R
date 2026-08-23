@@ -13,6 +13,9 @@
 #'   where the name field starts with one of these prefixes. Default is NULL (no filtering).
 #' @param exclude_prefixes Character vector or NULL. If provided, exclude records
 #'   where the name field starts with one of these prefixes. Default is NULL (no filtering).
+#' @param exclude_addresses Character vector or NULL. If provided, exclude records
+#'   for these addresses entirely (all packets, named or not), e.g. the addresses
+#'   returned by \code{\link{classify_addresses}}. Default is NULL (no filtering).
 #' @param verbose Logical. If TRUE (default), print processing messages to console.
 #'   Set to FALSE to suppress output.
 #'
@@ -48,6 +51,7 @@ process_bluetooth <- function(input_file,
                               progress_interval = 1000,
                               include_prefixes = NULL,
                               exclude_prefixes = NULL,
+                              exclude_addresses = NULL,
                               verbose = TRUE) {
   
   # Ensure input_file is a character vector
@@ -74,10 +78,13 @@ process_bluetooth <- function(input_file,
   
   overall_start <- Sys.time()
   
+  exclude_addr <- if (is.null(exclude_addresses)) NULL else as.character(exclude_addresses)
+
   result <- process_bluetooth_files(input_file,
                                    as.integer(progress_interval),
                                    include_prefixes,
-                                   exclude_prefixes)
+                                   exclude_prefixes,
+                                   exclude_addr)
   
   overall_end <- Sys.time()
   processing_time <- as.numeric(difftime(overall_end, overall_start, units = "secs"))

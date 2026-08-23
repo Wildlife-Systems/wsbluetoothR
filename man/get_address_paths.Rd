@@ -11,7 +11,10 @@ get_address_paths(
   verbose = TRUE,
   devices = NULL,
   min_date = NULL,
-  max_date = NULL
+  max_date = NULL,
+  include_names = NULL,
+  exclude_names = NULL,
+  exclude_addresses = NULL
 )
 }
 \arguments{
@@ -28,6 +31,12 @@ get_address_paths(
 \item{min_date}{Character or Date. Minimum date to include (YYYY-MM-DD or Date object). NULL = no minimum. Default is NULL.}
 
 \item{max_date}{Character or Date. Maximum date to include (YYYY-MM-DD or Date object). NULL = no maximum. Default is NULL.}
+
+\item{include_names}{Character vector. Only include records whose name starts with one of these prefixes. NULL = include all. Default is NULL.}
+
+\item{exclude_names}{Character vector. Exclude records whose name starts with one of these prefixes (e.g. \code{device_category_prefixes()}). NULL = exclude none. Default is NULL.}
+
+\item{exclude_addresses}{Character vector. Exclude these addresses entirely (all packets, named or not), e.g. the addresses from \code{\link{classify_addresses}}. NULL = exclude none. Default is NULL.}
 }
 \value{
 A data.frame with columns:

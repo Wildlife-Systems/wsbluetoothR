@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 
+#include "parallel_read.h"
+
 using namespace Rcpp;
 
 // Helper function to check if name starts with any prefix in the list
@@ -37,7 +39,7 @@ CharacterVector get_unique_device_names(std::string input_file,
                                         int progress_interval = 10000) {
   
   // Open input file
-  std::ifstream file(input_file);
+  std::ifstream file(input_file, std::ios::binary);
   if (!file.is_open()) {
     stop("Cannot open input file: " + input_file);
   }
@@ -211,128 +213,122 @@ DataFrame find_common_prefixes_cpp(CharacterVector device_names,
 DataFrame process_bluetooth_files(CharacterVector input_files,
                                   int progress_interval = 1000,
                                   Nullable<CharacterVector> include_prefixes = R_NilValue,
-                                  Nullable<CharacterVector> exclude_prefixes = R_NilValue) {
-  
+                                  Nullable<CharacterVector> exclude_prefixes = R_NilValue,
+                                  Nullable<CharacterVector> exclude_addresses = R_NilValue) {
+
   // Convert R prefix lists to C++ vectors
   std::vector<std::string> include_list;
   std::vector<std::string> exclude_list;
-  
+
   if (include_prefixes.isNotNull()) {
     CharacterVector inc = as<CharacterVector>(include_prefixes);
     for (int i = 0; i < inc.size(); i++) {
       include_list.push_back(as<std::string>(inc[i]));
     }
   }
-  
+
   if (exclude_prefixes.isNotNull()) {
     CharacterVector exc = as<CharacterVector>(exclude_prefixes);
     for (int i = 0; i < exc.size(); i++) {
       exclude_list.push_back(as<std::string>(exc[i]));
     }
   }
-  
-  // Global hash map to store counts across all files
-  // Reserve capacity to reduce rehashing (estimate ~1000 combinations per file)
-  std::unordered_map<std::string, int> count_by_device;
-  count_by_device.reserve(input_files.size() * 1000);
-  
-  // Set to store unique device names across all files
-  std::unordered_set<std::string> unique_names;
-  unique_names.reserve(500);  // Estimate typical number of unique device names
-  
-  int total_lines = 0;
-  int total_filtered = 0;
-  
-  // Process each file
-  for (int file_idx = 0; file_idx < input_files.size(); file_idx++) {
-    std::string input_file = as<std::string>(input_files[file_idx]);
-    
-    Rcout << "\nProcessing file " << (file_idx + 1) << " of " << input_files.size() 
-          << ": " << input_file << "\n";
-    
-    // Open input file
-    std::ifstream file(input_file);
-    if (!file.is_open()) {
-      stop("Cannot open input file: " + input_file);
+
+  // Addresses to exclude entirely (all packets, named or not)
+  std::unordered_set<std::string> exclude_addr_set;
+  if (exclude_addresses.isNotNull()) {
+    CharacterVector exa = as<CharacterVector>(exclude_addresses);
+    for (int i = 0; i < exa.size(); i++) {
+      exclude_addr_set.insert(as<std::string>(exa[i]));
     }
-    
-    std::string line;
-    int line_count = 0;
-    int file_filtered = 0;
-    
-    // Process file line by line
-    while (std::getline(file, line)) {
-      line_count++;
-      total_lines++;
-      
-      // Check for user interrupts periodically
-      if (total_lines % 10000 == 0) {
-        Rcpp::checkUserInterrupt();
-      }
-      
-      // Output progress
-      if (progress_interval > 0 && line_count % progress_interval == 0) {
-        Rcout << "  Processed " << line_count << " lines...\n";
-        R_FlushConsole();
-      }
-      
-      // Parse line: device datetime address power name
-      std::istringstream iss(line);
-      std::string device, datetime, address, power, name;
-      
-      if (iss >> device >> datetime >> address >> power) {
-        // Get the rest of the line as name (optional)
-        std::getline(iss, name);
-        
-        // Apply filtering based on name prefixes FIRST
-        bool should_include = true;
-        
-        // If include list provided, name must start with one of the prefixes
-        if (!include_list.empty()) {
-          should_include = starts_with_any(name, include_list);
-        }
-        
-        // If exclude list provided, name must NOT start with any of the prefixes
-        if (should_include && !exclude_list.empty()) {
-          should_include = !starts_with_any(name, exclude_list);
-        }
-        
-        // Only process records that pass the filter
-        if (should_include) {
-          // Trim leading whitespace from name for storage
-          size_t start = 0;
-          while (start < name.length() && std::isspace(name[start])) {
-            start++;
-          }
-          
-          // Trim trailing whitespace
-          size_t end = name.length();
-          while (end > start && std::isspace(name[end - 1])) {
-            end--;
-          }
-          
-          std::string trimmed_name = name.substr(start, end - start);
-          
-          // Store unique name (only for included records)
-          unique_names.insert(trimmed_name);
-          
-          // Create key from device and datetime
-          std::string key = device + "_" + datetime;
-          
-          // Increment count (aggregates across files automatically)
-          count_by_device[key]++;
-        } else {
-          file_filtered++;
-          total_filtered++;
-        }
-      }
-    }
-    
-    file.close();
-    Rcout << "  File lines processed: " << line_count << "\n";
-    Rcout << "  File lines filtered: " << file_filtered << "\n";
   }
+  bool filter_address = !exclude_addr_set.empty();
   
+  // Convert the R file list to std::strings for the parallel reader.
+  std::vector<std::string> files_vec;
+  files_vec.reserve(input_files.size());
+  for (int i = 0; i < input_files.size(); i++) {
+    files_vec.push_back(as<std::string>(input_files[i]));
+  }
+
+  // Per-thread accumulator: device_datetime counts + unique names + counters.
+  struct BtAcc {
+    std::unordered_map<std::string, int> count_by_device;
+    std::unordered_set<std::string> unique_names;
+    size_t lines = 0;
+    size_t filtered = 0;
+  };
+
+  // Per-line work (runs on worker threads; touches only its accumulator).
+  auto line_fn = [&](BtAcc& acc, const std::string& line) {
+    acc.lines++;
+
+    // Parse the four whitespace-delimited fields as views into `line`.
+    std::string_view tok[4], name;
+    if (wsbt::split_fields(line, tok, 4, name) < 4) {
+      return;  // malformed line (not counted as filtered, matching original)
+    }
+    std::string_view device = tok[0];
+    std::string_view datetime = tok[1];
+    std::string_view address = tok[2];
+
+    // Drop all packets for excluded addresses (e.g. classified devices)
+    if (filter_address &&
+        exclude_addr_set.find(std::string(address)) != exclude_addr_set.end()) {
+      acc.filtered++;
+      return;
+    }
+
+    // Apply filtering based on name prefixes FIRST (name is the line remainder)
+    bool should_include = true;
+    if (!include_list.empty()) {
+      should_include = wsbt::name_starts_with_any_sv(name, include_list);
+    }
+    if (should_include && !exclude_list.empty()) {
+      should_include = !wsbt::name_starts_with_any_sv(name, exclude_list);
+    }
+
+    if (!should_include) {
+      acc.filtered++;
+      return;
+    }
+
+    // Store the trimmed name and increment the device_datetime count.
+    std::string_view trimmed_name = wsbt::trim_view(name);
+    acc.unique_names.emplace(trimmed_name);
+
+    std::string key;
+    key.reserve(device.size() + 1 + datetime.size());
+    key.append(device.data(), device.size());
+    key.push_back('_');
+    key.append(datetime.data(), datetime.size());
+    acc.count_by_device[std::move(key)]++;
+  };
+
+  // Fold one accumulator into another (runs on the main thread).
+  auto merge_fn = [](BtAcc& dst, BtAcc& src) {
+    dst.lines += src.lines;
+    dst.filtered += src.filtered;
+    if (dst.count_by_device.empty()) {
+      dst.count_by_device = std::move(src.count_by_device);
+    } else {
+      for (auto& kv : src.count_by_device) dst.count_by_device[kv.first] += kv.second;
+    }
+    if (dst.unique_names.empty()) {
+      dst.unique_names = std::move(src.unique_names);
+    } else {
+      for (auto& n : src.unique_names) dst.unique_names.insert(n);
+    }
+  };
+
+  BtAcc acc = wsbt::parallel_reduce_files<BtAcc>(files_vec, line_fn, merge_fn);
+
+  // Alias so the existing summary + DataFrame-construction code is unchanged.
+  std::unordered_map<std::string, int>& count_by_device = acc.count_by_device;
+  std::unordered_set<std::string>& unique_names = acc.unique_names;
+  int total_lines = static_cast<int>(acc.lines);
+  int total_filtered = static_cast<int>(acc.filtered);
+
   Rcout << "\nTotal lines processed: " << total_lines << "\n";
   Rcout << "Total lines filtered out: " << total_filtered << "\n";
   Rcout << "Unique device names found: " << unique_names.size() << "\n";

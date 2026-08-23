@@ -289,6 +289,7 @@ plot_address_paths_sankey <- function(path_data,
 #' paths <- get_address_paths(files, top_n = 30)
 #' plot_address_paths_alluvial(paths, min_flow = 2)
 #' }
+#' @importFrom stats as.formula
 #' @export
 plot_address_paths_alluvial <- function(path_data,
                                         min_flow = 1,

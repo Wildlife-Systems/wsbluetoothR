@@ -1,0 +1,15 @@
+16 20250701-100000 aa:aa:aa:aa:aa:aa -80 lime-604907293575
+18 20250701-100500 aa:aa:aa:aa:aa:aa -82 lime-604907293575
+16 20250701-100000 bb:bb:bb:bb:bb:bb -70 BYD BLE3
+16 20250701-100100 bb:bb:bb:bb:bb:bb -71 BYD BLE3
+16 20250701-100000 cc:cc:cc:cc:cc:cc -60 [TV] Samsung 5 Series (43)
+16 20250701-100100 cc:cc:cc:cc:cc:cc -60 [TV] Samsung 5 Series (43)
+16 20250701-100200 cc:cc:cc:cc:cc:cc -60 [TV] Samsung 5 Series (43)
+16 20250701-100000 dd:dd:dd:dd:dd:dd -85
+18 20250701-100500 dd:dd:dd:dd:dd:dd -85
+21 20250701-101000 dd:dd:dd:dd:dd:dd -85
+16 20250701-100000 ee:ee:ee:ee:ee:ee -75 WHOOP 4C0857076
+16 20250701-100100 ee:ee:ee:ee:ee:ee -75
+18 20250701-100600 ee:ee:ee:ee:ee:ee -76
+16 20250701-100000 ff:ff:ff:ff:ff:ff -88
+18 20250701-100500 ff:ff:ff:ff:ff:ff -88

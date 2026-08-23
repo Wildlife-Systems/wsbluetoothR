@@ -1,0 +1,5 @@
+# Enable OpenMP for the parallelised post-processing loops (Windows / Rtools).
+# Where the toolchain lacks OpenMP, SHLIB_OPENMP_CXXFLAGS expands to nothing and
+# the `#pragma omp` lines (guarded by `#ifdef _OPENMP`) compile to serial loops.
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS)

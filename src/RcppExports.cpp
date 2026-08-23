@@ -11,55 +11,76 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // calculate_address_paths
-DataFrame calculate_address_paths(std::vector<std::string> input_files, int top_n, int progress_interval, Rcpp::CharacterVector device_filter, std::string min_date, std::string max_date);
-RcppExport SEXP _wsbluetoothR_calculate_address_paths(SEXP input_filesSEXP, SEXP top_nSEXP, SEXP progress_intervalSEXP, SEXP device_filterSEXP, SEXP min_dateSEXP, SEXP max_dateSEXP) {
+DataFrame calculate_address_paths(std::vector<std::string> input_files, int top_n, int progress_interval, Rcpp::Nullable<Rcpp::CharacterVector> device_filter, std::string min_date, std::string max_date, Rcpp::Nullable<Rcpp::CharacterVector> include_list, Rcpp::Nullable<Rcpp::CharacterVector> exclude_list, Rcpp::Nullable<Rcpp::CharacterVector> exclude_addresses);
+RcppExport SEXP _wsbluetoothR_calculate_address_paths(SEXP input_filesSEXP, SEXP top_nSEXP, SEXP progress_intervalSEXP, SEXP device_filterSEXP, SEXP min_dateSEXP, SEXP max_dateSEXP, SEXP include_listSEXP, SEXP exclude_listSEXP, SEXP exclude_addressesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<std::string> >::type input_files(input_filesSEXP);
     Rcpp::traits::input_parameter< int >::type top_n(top_nSEXP);
     Rcpp::traits::input_parameter< int >::type progress_interval(progress_intervalSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type device_filter(device_filterSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type device_filter(device_filterSEXP);
     Rcpp::traits::input_parameter< std::string >::type min_date(min_dateSEXP);
     Rcpp::traits::input_parameter< std::string >::type max_date(max_dateSEXP);
-    rcpp_result_gen = Rcpp::wrap(calculate_address_paths(input_files, top_n, progress_interval, device_filter, min_date, max_date));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type include_list(include_listSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type exclude_list(exclude_listSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type exclude_addresses(exclude_addressesSEXP);
+    rcpp_result_gen = Rcpp::wrap(calculate_address_paths(input_files, top_n, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, exclude_addresses));
+    return rcpp_result_gen;
+END_RCPP
+}
+// find_matching_addresses
+DataFrame find_matching_addresses(std::vector<std::string> input_files, std::vector<std::string> prefixes, int progress_interval, Rcpp::Nullable<Rcpp::CharacterVector> device_filter, std::string min_date, std::string max_date);
+RcppExport SEXP _wsbluetoothR_find_matching_addresses(SEXP input_filesSEXP, SEXP prefixesSEXP, SEXP progress_intervalSEXP, SEXP device_filterSEXP, SEXP min_dateSEXP, SEXP max_dateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type input_files(input_filesSEXP);
+    Rcpp::traits::input_parameter< std::vector<std::string> >::type prefixes(prefixesSEXP);
+    Rcpp::traits::input_parameter< int >::type progress_interval(progress_intervalSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type device_filter(device_filterSEXP);
+    Rcpp::traits::input_parameter< std::string >::type min_date(min_dateSEXP);
+    Rcpp::traits::input_parameter< std::string >::type max_date(max_dateSEXP);
+    rcpp_result_gen = Rcpp::wrap(find_matching_addresses(input_files, prefixes, progress_interval, device_filter, min_date, max_date));
     return rcpp_result_gen;
 END_RCPP
 }
 // calculate_address_duration
-DataFrame calculate_address_duration(std::vector<std::string> input_files, int progress_interval, Rcpp::CharacterVector device_filter, std::string min_date, std::string max_date, Rcpp::CharacterVector include_list, Rcpp::CharacterVector exclude_list, bool low_memory);
-RcppExport SEXP _wsbluetoothR_calculate_address_duration(SEXP input_filesSEXP, SEXP progress_intervalSEXP, SEXP device_filterSEXP, SEXP min_dateSEXP, SEXP max_dateSEXP, SEXP include_listSEXP, SEXP exclude_listSEXP, SEXP low_memorySEXP) {
+DataFrame calculate_address_duration(std::vector<std::string> input_files, int progress_interval, Rcpp::Nullable<Rcpp::CharacterVector> device_filter, std::string min_date, std::string max_date, Rcpp::Nullable<Rcpp::CharacterVector> include_list, Rcpp::Nullable<Rcpp::CharacterVector> exclude_list, bool low_memory, Rcpp::Nullable<Rcpp::CharacterVector> exclude_addresses);
+RcppExport SEXP _wsbluetoothR_calculate_address_duration(SEXP input_filesSEXP, SEXP progress_intervalSEXP, SEXP device_filterSEXP, SEXP min_dateSEXP, SEXP max_dateSEXP, SEXP include_listSEXP, SEXP exclude_listSEXP, SEXP low_memorySEXP, SEXP exclude_addressesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<std::string> >::type input_files(input_filesSEXP);
     Rcpp::traits::input_parameter< int >::type progress_interval(progress_intervalSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type device_filter(device_filterSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type device_filter(device_filterSEXP);
     Rcpp::traits::input_parameter< std::string >::type min_date(min_dateSEXP);
     Rcpp::traits::input_parameter< std::string >::type max_date(max_dateSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type include_list(include_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type exclude_list(exclude_listSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type include_list(include_listSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type exclude_list(exclude_listSEXP);
     Rcpp::traits::input_parameter< bool >::type low_memory(low_memorySEXP);
-    rcpp_result_gen = Rcpp::wrap(calculate_address_duration(input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type exclude_addresses(exclude_addressesSEXP);
+    rcpp_result_gen = Rcpp::wrap(calculate_address_duration(input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory, exclude_addresses));
     return rcpp_result_gen;
 END_RCPP
 }
 // calculate_average_address_duration
-DataFrame calculate_average_address_duration(std::vector<std::string> input_files, int progress_interval, Rcpp::CharacterVector device_filter, std::string min_date, std::string max_date, Rcpp::CharacterVector include_list, Rcpp::CharacterVector exclude_list, bool low_memory, std::string time_group);
-RcppExport SEXP _wsbluetoothR_calculate_average_address_duration(SEXP input_filesSEXP, SEXP progress_intervalSEXP, SEXP device_filterSEXP, SEXP min_dateSEXP, SEXP max_dateSEXP, SEXP include_listSEXP, SEXP exclude_listSEXP, SEXP low_memorySEXP, SEXP time_groupSEXP) {
+DataFrame calculate_average_address_duration(std::vector<std::string> input_files, int progress_interval, Rcpp::Nullable<Rcpp::CharacterVector> device_filter, std::string min_date, std::string max_date, Rcpp::Nullable<Rcpp::CharacterVector> include_list, Rcpp::Nullable<Rcpp::CharacterVector> exclude_list, bool low_memory, std::string time_group, Rcpp::Nullable<Rcpp::CharacterVector> exclude_addresses);
+RcppExport SEXP _wsbluetoothR_calculate_average_address_duration(SEXP input_filesSEXP, SEXP progress_intervalSEXP, SEXP device_filterSEXP, SEXP min_dateSEXP, SEXP max_dateSEXP, SEXP include_listSEXP, SEXP exclude_listSEXP, SEXP low_memorySEXP, SEXP time_groupSEXP, SEXP exclude_addressesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::vector<std::string> >::type input_files(input_filesSEXP);
     Rcpp::traits::input_parameter< int >::type progress_interval(progress_intervalSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type device_filter(device_filterSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type device_filter(device_filterSEXP);
     Rcpp::traits::input_parameter< std::string >::type min_date(min_dateSEXP);
     Rcpp::traits::input_parameter< std::string >::type max_date(max_dateSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type include_list(include_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type exclude_list(exclude_listSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type include_list(include_listSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type exclude_list(exclude_listSEXP);
     Rcpp::traits::input_parameter< bool >::type low_memory(low_memorySEXP);
     Rcpp::traits::input_parameter< std::string >::type time_group(time_groupSEXP);
-    rcpp_result_gen = Rcpp::wrap(calculate_average_address_duration(input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory, time_group));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type exclude_addresses(exclude_addressesSEXP);
+    rcpp_result_gen = Rcpp::wrap(calculate_average_address_duration(input_files, progress_interval, device_filter, min_date, max_date, include_list, exclude_list, low_memory, time_group, exclude_addresses));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -90,8 +111,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // process_bluetooth_files
-DataFrame process_bluetooth_files(CharacterVector input_files, int progress_interval, Nullable<CharacterVector> include_prefixes, Nullable<CharacterVector> exclude_prefixes);
-RcppExport SEXP _wsbluetoothR_process_bluetooth_files(SEXP input_filesSEXP, SEXP progress_intervalSEXP, SEXP include_prefixesSEXP, SEXP exclude_prefixesSEXP) {
+DataFrame process_bluetooth_files(CharacterVector input_files, int progress_interval, Nullable<CharacterVector> include_prefixes, Nullable<CharacterVector> exclude_prefixes, Nullable<CharacterVector> exclude_addresses);
+RcppExport SEXP _wsbluetoothR_process_bluetooth_files(SEXP input_filesSEXP, SEXP progress_intervalSEXP, SEXP include_prefixesSEXP, SEXP exclude_prefixesSEXP, SEXP exclude_addressesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -99,18 +120,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type progress_interval(progress_intervalSEXP);
     Rcpp::traits::input_parameter< Nullable<CharacterVector> >::type include_prefixes(include_prefixesSEXP);
     Rcpp::traits::input_parameter< Nullable<CharacterVector> >::type exclude_prefixes(exclude_prefixesSEXP);
-    rcpp_result_gen = Rcpp::wrap(process_bluetooth_files(input_files, progress_interval, include_prefixes, exclude_prefixes));
+    Rcpp::traits::input_parameter< Nullable<CharacterVector> >::type exclude_addresses(exclude_addressesSEXP);
+    rcpp_result_gen = Rcpp::wrap(process_bluetooth_files(input_files, progress_interval, include_prefixes, exclude_prefixes, exclude_addresses));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_wsbluetoothR_calculate_address_paths", (DL_FUNC) &_wsbluetoothR_calculate_address_paths, 6},
-    {"_wsbluetoothR_calculate_address_duration", (DL_FUNC) &_wsbluetoothR_calculate_address_duration, 8},
-    {"_wsbluetoothR_calculate_average_address_duration", (DL_FUNC) &_wsbluetoothR_calculate_average_address_duration, 9},
+    {"_wsbluetoothR_calculate_address_paths", (DL_FUNC) &_wsbluetoothR_calculate_address_paths, 9},
+    {"_wsbluetoothR_find_matching_addresses", (DL_FUNC) &_wsbluetoothR_find_matching_addresses, 6},
+    {"_wsbluetoothR_calculate_address_duration", (DL_FUNC) &_wsbluetoothR_calculate_address_duration, 9},
+    {"_wsbluetoothR_calculate_average_address_duration", (DL_FUNC) &_wsbluetoothR_calculate_average_address_duration, 10},
     {"_wsbluetoothR_get_unique_device_names", (DL_FUNC) &_wsbluetoothR_get_unique_device_names, 2},
     {"_wsbluetoothR_find_common_prefixes_cpp", (DL_FUNC) &_wsbluetoothR_find_common_prefixes_cpp, 4},
-    {"_wsbluetoothR_process_bluetooth_files", (DL_FUNC) &_wsbluetoothR_process_bluetooth_files, 4},
+    {"_wsbluetoothR_process_bluetooth_files", (DL_FUNC) &_wsbluetoothR_process_bluetooth_files, 5},
     {NULL, NULL, 0}
 };
 

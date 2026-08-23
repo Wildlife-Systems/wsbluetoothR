@@ -8,9 +8,12 @@ calculate_address_paths(
   input_files,
   top_n = 10L,
   progress_interval = 10000L,
-  device_filter = characterVector(),
+  device_filter = NULL,
   min_date = "",
-  max_date = ""
+  max_date = "",
+  include_list = NULL,
+  exclude_list = NULL,
+  exclude_addresses = NULL
 )
 }
 \arguments{
@@ -25,6 +28,12 @@ calculate_address_paths(
 \item{min_date}{String. Minimum date in YYYYMMDD format. Empty = no minimum.}
 
 \item{max_date}{String. Maximum date in YYYYMMDD format. Empty = no maximum.}
+
+\item{include_list}{Character vector. Only include records where name starts with these prefixes. Empty = no filter.}
+
+\item{exclude_list}{Character vector. Exclude records where name starts with these prefixes. Empty = no filter.}
+
+\item{exclude_addresses}{Character vector. Exclude these addresses entirely (all packets). Empty = no filter.}
 }
 \value{
 A data.frame with columns:

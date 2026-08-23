@@ -7,13 +7,14 @@
 calculate_average_address_duration(
   input_files,
   progress_interval = 10000L,
-  device_filter = characterVector(),
+  device_filter = NULL,
   min_date = "",
   max_date = "",
-  include_list = characterVector(),
-  exclude_list = characterVector(),
+  include_list = NULL,
+  exclude_list = NULL,
   low_memory = FALSE,
-  time_group = "day"
+  time_group = "day",
+  exclude_addresses = NULL
 )
 }
 \arguments{
@@ -31,7 +32,11 @@ calculate_average_address_duration(
 
 \item{exclude_list}{Character vector. Exclude records where name starts with these prefixes.}
 
+\item{low_memory}{Logical. If TRUE, processes devices in batches (default 4 per pass, set via the \code{WSBT_DEVICES_PER_PASS} environment variable) to reduce peak memory, reading the input once per batch. Default is FALSE.}
+
 \item{time_group}{String. Time grouping: "day" or "hour". Default is "day".}
+
+\item{exclude_addresses}{Character vector. Exclude these addresses entirely (all packets). Empty = no filter.}
 }
 \value{
 A data.frame with columns:
