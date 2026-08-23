@@ -136,7 +136,7 @@ get_address_duration <- function(files, progress_interval = 10000, verbose = TRU
                                        exclude_addr)
   
   # Convert date to Date class
-  result$date <- as.Date(result$date)
+  result$date <- as.Date(result$date, format = "%Y-%m-%d")
   
   # Sort by device, date, and duration (descending)
   result <- result[order(result$device, result$date, -result$duration_seconds), ]
