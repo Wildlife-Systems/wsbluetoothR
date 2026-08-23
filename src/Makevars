@@ -1,3 +1,5 @@
+CXX_STD = CXX17
+
 # Enable OpenMP for the parallelised post-processing loops.
 # Where the toolchain lacks OpenMP, SHLIB_OPENMP_CXXFLAGS expands to nothing and
 # the `#pragma omp` lines (guarded by `#ifdef _OPENMP`) compile to serial loops.
