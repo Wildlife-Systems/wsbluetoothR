@@ -12,6 +12,7 @@
 #include <cstdlib>
 
 #include "parallel_read.h"
+#include "datetime_parse.h"
 
 using namespace Rcpp;
 
@@ -42,33 +43,7 @@ struct TimeRange {
 
 // Parse datetime string in format YYYYMMDD-HHMMSS to time_t
 std::time_t parse_datetime(std::string_view datetime_str) {
-    if (datetime_str.length() < 15) {
-        return -1;
-    }
-
-    struct tm tm = {0};
-
-    // Extract components: YYYYMMDD-HHMMSS (fixed offsets; views are not
-    // null-terminated, so copy fixed byte counts rather than using c_str()).
-    char year[5], month[3], day[3], hour[3], min[3], sec[3];
-    const char* s = datetime_str.data();
-
-    std::memcpy(year, s, 4);       year[4] = '\0';
-    std::memcpy(month, s + 4, 2);  month[2] = '\0';
-    std::memcpy(day, s + 6, 2);    day[2] = '\0';
-    std::memcpy(hour, s + 9, 2);   hour[2] = '\0';
-    std::memcpy(min, s + 11, 2);   min[2] = '\0';
-    std::memcpy(sec, s + 13, 2);   sec[2] = '\0';
-
-    tm.tm_year = std::atoi(year) - 1900;
-    tm.tm_mon = std::atoi(month) - 1;
-    tm.tm_mday = std::atoi(day);
-    tm.tm_hour = std::atoi(hour);
-    tm.tm_min = std::atoi(min);
-    tm.tm_sec = std::atoi(sec);
-    tm.tm_isdst = -1;  // Let mktime determine DST
-
-    return std::mktime(&tm);
+    return wsbt_parse_datetime(datetime_str);
 }
 
 // Extract date string in format YYYY-MM-DD from datetime string

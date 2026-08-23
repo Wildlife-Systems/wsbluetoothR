@@ -129,7 +129,7 @@ get_average_address_duration <- function(files, progress_interval = 10000, verbo
                                   format = "%Y-%m-%d-%H:%M:%S", tz = "UTC")
   } else {
     # Format: YYYY-MM-DD -> Date
-    result$datetime <- as.Date(result$datetime)
+    result$datetime <- as.Date(result$datetime, format = "%Y-%m-%d")
   }
   
   # Sort by device and datetime
